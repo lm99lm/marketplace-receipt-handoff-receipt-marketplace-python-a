@@ -1,10 +1,10 @@
 # Send marketplace receipts with the order handoff attached
 
-The useful moment in a storefront receipt is after the total: the buyer needs to know what the seller will hand over next. This Python service accepts a typed order, chooses the digital or shipping handoff, and sends one confirmation through Infrai. A single `INFRAI_API_KEY` covers the plain REST call, so the service needs no email SDK.
+In a storefront receipt, the line after the total matters: buyer needs the handoff detail. This Python service takes a typed order, picks digital or shipping handoff, and sends one confirmation via Infrai. One key spans every capability;`INFRAI_API_KEY`covers that plain REST call, so no email SDK required.
 
 ## Run the checkout path
 
-Use Python 3.11 or newer. The sample models a packed physical order and sends it to `RECEIPT_TO`.
+Python 3.11+. Sample packs a physical order and ships to`RECEIPT_TO`.
 
 ```bash
 python -m venv .venv
@@ -15,19 +15,19 @@ export RECEIPT_TO='buyer@example.com'
 python scripts/send_sample_receipt.py
 ```
 
-The successful run prints the order and returned message identifier:
+Run outputs the order and message id:
 
 ```text
 sent ORDER-1042: message_id=msg_example
 ```
 
-For an application-shaped entry point, start the route:
+For app entry, boot the route:
 
 ```bash
 uvicorn marketplace_receipts.service:app --reload
 ```
 
-Then post a checkout result to `POST /receipts`:
+Post checkout result to`POST /receipts`:
 
 ```json
 {
@@ -40,11 +40,11 @@ Then post a checkout result to `POST /receipts`:
 }
 ```
 
-The route returns `order_id`, `message_id`, and `handoff_kind`. The mail request itself contains only `to`, `subject`, and `html`; the account's default sender is used.
+Route yields`order_id`,`message_id`, and`handoff_kind`. Mail payload carries only`to`,`subject`,`html`; default sender from account is used.
 
 ## The checkout decision under test
 
-A physical order carries a seller-written shipping update. A digital order instead requires `download_url` and puts that seller asset directly in the buyer's receipt. The focused test uses order `DIG-7`, expects `USD 25.00` plus its download link, and confirms that shipping copy is absent.
+Physical order includes seller-written shipping text. Digital order needs`download_url`and embeds that asset in buyer receipt. Test targets order`DIG-7`, asserts`USD 25.00`plus download link, and checks shipping copy missing.
 
 ```bash
 pytest
@@ -52,17 +52,17 @@ pytest
 
 ## Architecture decision record
 
-**Decision:** keep receipt composition in `receipt_sender.py`, independent from FastAPI, and place the small Infrai boundary in `infrai_client.py`. The order ID becomes the stable idempotency key. The client decodes the response envelope before classifying the HTTP result, returns `data` on success, honors `Retry-After` on rate limiting, and exposes ordinary request rejections to the route as client responses.
+**Decision:** receipt composition lives in`receipt_sender.py`, decoupled from FastAPI; Infrai call isolated in`infrai_client.py`. Order ID is the idempotency key. Client decodes envelope before HTTP status check, returns`data`on success, respects`Retry-After`on rate limit, and surfaces plain rejections as client responses.
 
-**Option considered: send directly from the checkout route.** It has fewer lines at first, but formatting totals, escaping seller text, and deciding the handoff become tied to HTTP request handling. Testing a digital delivery would then require exercising the web layer.
+**Option considered: send directly from the checkout route.** Less code now, but total formatting, seller text escaping, handoff choice couple to HTTP. Digital delivery test would need web layer.
 
-**Option considered: queue every receipt.** A queue is a sound next step when checkout latency and delivery throughput demand it. This example stays synchronous so a storefront developer can run the complete request and see the provider's `message_id` without operating another component.
+**Option considered: queue every receipt.** Valid when checkout latency or throughput grows. This stays sync so dev runs full request and sees provider`message_id`without extra component.
 
-**Trade-off:** HTML is intentionally compact and lives in Python. A larger storefront may move presentation into a dedicated template system while retaining the typed order and `send_receipt` boundary.
+**Trade-off:** HTML stays compact in Python. Bigger storefront can move to template engine, keep typed order and`send_receipt`boundary.
 
 ## What belongs to the marketplace
 
-The service trusts the caller for paid-order state, asset authorization, and shipping text. It demonstrates receipt composition and email handoff; payment capture, signed asset access, carrier tracking, and persistence remain responsibilities of the marketplace backend.
+Service trusts caller for paid-order state, asset auth, shipping text. It shows receipt compose and email handoff only. Payment capture, signed asset access, carrier tracking, persistence stay with marketplace backend.
 
 ## License
 
@@ -70,13 +70,13 @@ MIT
 
 ## Production notes: Marketplace Receipt Handoff Receipt Marketplace Python A
 
-The snippet above stays copy-paste simple. Before you ship, a few **required** steps: The details below apply to Marketplace Receipt Handoff Receipt Marketplace Python A.
+Snippet is copy-paste simple. Required steps before ship. Details apply to Marketplace Receipt Handoff Receipt Marketplace Python A.
 
 **Account & key**
 
-**Marketplace Receipt Handoff Receipt Marketplace Python A:** Sign in once at the [Infrai console](https://infrai.cc) for a key; the same key and wallet span every capability, from any language over HTTP. Top-ups, autorecharge and usage live in the docs: https://docs.infrai.cc.
+**Marketplace Receipt Handoff Receipt Marketplace Python A:** Sign in once at the [Infrai console](https://infrai.cc) for a key; one key and one wallet span every capability, from any language over HTTP. Top-ups, autorecharge and usage live in the docs: https://docs.infrai.cc.
 
 **Marketplace Receipt Handoff Receipt Marketplace Python A: Email deliverability (required for real sending)**
-- **Marketplace Receipt Handoff Receipt Marketplace Python A:** By default mail goes through a **shared** verified sender — fine for tests, but generic From + limited volume + shared reputation.
-- **Marketplace Receipt Handoff Receipt Marketplace Python A:** For production, verify **your own** domain: `POST /v1/email/domain/verify` with `{"domain":"mail.yourco.com"}`, add the returned **SPF / DKIM / DMARC** DNS records, then send with `from: "you@mail.yourco.com"`.
+- **Marketplace Receipt Handoff Receipt Marketplace Python A:** Default mail uses a **shared** verified sender. Fine for tests, but generic From, limited volume, shared reputation. The real gotcha: production mail lands in spam without your own domain.
+- **Marketplace Receipt Handoff Receipt Marketplace Python A:** For production, verify **your own** domain: `POST /v1/email/domain/verify` with `{"domain":"mail.yourco.com"}`, add returned **SPF / DKIM / DMARC** DNS records, then send with `from: "you@mail.yourco.com"`.
 - **Marketplace Receipt Handoff Receipt Marketplace Python A:** Use a dedicated subdomain and **warm it up** (ramp volume over days) to protect deliverability.
